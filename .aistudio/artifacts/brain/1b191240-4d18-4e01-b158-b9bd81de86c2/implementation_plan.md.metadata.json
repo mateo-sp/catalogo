@@ -1,0 +1,6 @@
+{
+  "summary":  "Plan actualizado para reflejar que el carrito es una lista limpia y exclusiva de productos que el cliente selecciona para comprar con su sabor y cantidad, desde donde se genera directamente el mensaje formateado de pedido y se envía por WhatsApp sin pasos innecesarios.",
+  "updatedAt":  "2026-10-24T13:32:15.303324306Z",
+  "requestFeedback":  true,
+  "userFacing":  true
+}

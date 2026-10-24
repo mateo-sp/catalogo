@@ -1,0 +1,45 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAuthorizedAdmin() {
+      return isSignedIn() && (
+        request.auth.uid == '7veWlG9BEWgorpmf7sMAPJvMY3k2' ||
+        (request.auth.token.email != null && (
+          request.auth.token.email == 'djgamer802@gmail.com' ||
+          request.auth.token.email == 'supposimon@gmail.com'
+        ))
+      );
+    }
+
+    // Colección de Productos (Privada - Solo Admin)
+    match /productos/{productId} {
+      allow read, write: if isAuthorizedAdmin();
+    }
+
+    // Colección de Ventas y Deudas (Privada - Solo Admin)
+    match /ventas/{ventaId} {
+      allow read, write: if isAuthorizedAdmin();
+    }
+
+    // Colección de Bitácora de Auditoría (Privada - Solo Admin)
+    match /activityLogs/{logId} {
+      allow read, write: if isAuthorizedAdmin();
+    }
+
+    // Configuración de umbrales (Privada - Solo Admin)
+    match /categoryThresholds/{catId} {
+      allow read, write: if isAuthorizedAdmin();
+    }
+
+    // Colección Pública de Catálogo para la Web (Lectura pública libre, Escritura solo Admin)
+    match /catalogo_publico/{productoId} {
+      allow read: if true;
+      allow write: if isAuthorizedAdmin();
+    }
+  }
+}

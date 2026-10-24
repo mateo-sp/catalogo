@@ -1,0 +1,6 @@
+{
+  "name": "supposhop - Catálogo Digital",
+  "description": "Catálogo digital de vapers oficial de supposhop conectado en tiempo real a Firebase Firestore.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
