@@ -165,30 +165,82 @@ export const catalogService = {
         }
 
         const items: CatalogProduct[] = [];
+        const inventoryByBrand = new Map<string, CatalogProduct>();
         snapshot.forEach((docSnap) => {
           const data = docSnap.data();
           // Solo mostrar si visible es true o no está definido como false
           if (data.visible !== false && data.inventoryDeleted !== true) {
+            const nombre = String(data.nombre || data.name || 'Sin nombre');
+            const marca = String(data.marca || data.brand || 'General');
+            const precio = Number(data.precio ?? data.sellingPrice ?? 0);
+            const disponible = data.disponible !== false;
+            if (data.inventorySource === true) {
+              const brandKey = marca.trim().toLowerCase();
+              const group = inventoryByBrand.get(brandKey);
+              const inventoryVariant = {
+                id: docSnap.id,
+                nombre,
+                precio,
+                disponible,
+              };
+              if (group) {
+                group.inventoryVariants?.push(inventoryVariant);
+                group.variantes?.push(nombre);
+                group.precio = Math.min(group.precio, precio);
+                group.disponible ||= disponible;
+                if (!group.imagenUrl) {
+                  group.imagenUrl = data.imagenUrl || data.imageUrl || '';
+                }
+                group.updatedAt = Math.max(group.updatedAt || 0, data.updatedAt || 0);
+              } else {
+                inventoryByBrand.set(brandKey, {
+                  id: `inventory-brand-${brandKey}`,
+                  nombre: marca,
+                  marca,
+                  categoria: data.categoria || data.category || 'Vapes',
+                  precio,
+                  descripcion: '',
+                  imagenUrl:
+                    getBrandImage(marca) ||
+                    data.imagenUrl ||
+                    data.imageUrl ||
+                    '',
+                  visible: true,
+                  disponible,
+                  variantes: [nombre],
+                  inventoryVariants: [inventoryVariant],
+                  updatedAt: data.updatedAt || Date.now(),
+                  inventorySource: true,
+                });
+              }
+              return;
+            }
+
             items.push({
               id: docSnap.id,
-              nombre: data.nombre || data.name || 'Sin nombre',
-              marca: data.marca || data.brand || 'General',
+              nombre,
+              marca,
               categoria: data.categoria || data.category || 'Vapes',
-              precio: Number(data.precio ?? data.sellingPrice ?? 0),
+              precio,
               descripcion: data.descripcion || data.description || '',
               imagenUrl:
                 data.imagenUrl ||
                 data.imageUrl ||
-                getBrandImage(String(data.marca || data.brand || '')),
+                getBrandImage(marca),
               visible: data.visible !== false,
-              disponible: data.disponible !== false,
+              disponible,
               variantes: Array.isArray(data.variantes) ? data.variantes : [],
               updatedAt: data.updatedAt || Date.now(),
-              inventorySource: data.inventorySource === true,
+              inventorySource: false,
             });
           }
         });
 
+        inventoryByBrand.forEach((product) => {
+          product.variantes = [...new Set(product.variantes)];
+          product.inventoryVariants?.sort((a, b) => a.nombre.localeCompare(b.nombre));
+          items.push(product);
+        });
         callback(items);
       },
       (error) => {

@@ -43,12 +43,16 @@ export const ProductModal: React.FC<ProductModalProps> = ({ product, onClose }) 
 
   if (!product) return null;
 
-  const formattedPrice =
-    typeof product.precio === 'number'
-      ? product.precio % 1 === 0
-        ? `$${product.precio.toLocaleString('es-AR')}`
-        : `$${product.precio.toFixed(2)}`
-      : `$${product.precio}`;
+  const selectedInventoryVariant = product.inventoryVariants?.find(
+    (variant) => variant.nombre === selectedVariant
+  );
+  const selectedPrice = selectedInventoryVariant?.precio ?? product.precio;
+  const selectedAvailability = selectedInventoryVariant?.disponible ?? product.disponible;
+  const formatPrice = (price: number) =>
+    price % 1 === 0
+      ? `$${price.toLocaleString('es-AR')}`
+      : `$${price.toFixed(2)}`;
+  const formattedPrice = formatPrice(selectedPrice);
 
   /**
    * Generar y abrir WhatsApp para un sabor específico.
@@ -56,21 +60,27 @@ export const ProductModal: React.FC<ProductModalProps> = ({ product, onClose }) 
    */
   const handleMakeOrder = async (variantOverride?: string) => {
     const chosenVariant = variantOverride ?? selectedVariant;
+    const chosenInventoryVariant = product.inventoryVariants?.find(
+      (variant) => variant.nombre === chosenVariant
+    );
+    const chosenPrice = chosenInventoryVariant?.precio ?? product.precio;
+    const chosenAvailability = chosenInventoryVariant?.disponible ?? product.disponible;
+    const chosenFormattedPrice = formatPrice(chosenPrice);
 
     let orderText = `🛒 *HOLA supposhop! Quiero consultar / hacer un pedido:*\n\n`;
-    orderText += `• *Modelo:* ${product.marca} - ${product.nombre}\n`;
+    orderText += `• *Modelo:* ${product.marca}${product.inventorySource ? '' : ` - ${product.nombre}`}\n`;
     if (chosenVariant) {
       orderText += `• *Sabor / Variante:* ${chosenVariant}\n`;
     }
-    orderText += `• *Precio:* ${formattedPrice}\n`;
-    orderText += `• *Disponibilidad:* ${product.disponible ? 'Disponible' : 'Consultar stock'}\n\n`;
+    orderText += `• *Precio:* ${chosenFormattedPrice}\n`;
+    orderText += `• *Disponibilidad:* ${chosenAvailability ? 'Disponible' : 'Consultar stock'}\n\n`;
     orderText += `¿Tienen stock disponible para coordinar la entrega?`;
 
     // Try Web Share API on mobile devices first
     if (navigator.share && /mobile|android|iphone|ipad/i.test(navigator.userAgent)) {
       try {
         await navigator.share({
-          title: `Pedido en supposhop - ${product.nombre}`,
+          title: `Pedido en supposhop - ${product.marca}`,
           text: orderText,
         });
         return;
@@ -104,7 +114,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({ product, onClose }) 
                 {product.marca} · {product.categoria}
               </span>
               <h2 className="text-base sm:text-lg font-extrabold text-white tracking-tight truncate">
-                {product.nombre}
+                {product.inventorySource ? 'Sabores disponibles' : product.nombre}
               </h2>
             </div>
 
@@ -127,12 +137,14 @@ export const ProductModal: React.FC<ProductModalProps> = ({ product, onClose }) 
                   <span className="text-sm font-bold text-white uppercase tracking-wider">
                     {product.marca}
                   </span>
-                  <span className="text-xs text-zinc-400">{product.nombre}</span>
+                  <span className="text-xs text-zinc-400">
+                    {product.inventorySource ? product.marca : product.nombre}
+                  </span>
                 </div>
               ) : (
                 <img
                   src={product.imagenUrl}
-                  alt={`${product.nombre} - ${product.marca}`}
+                  alt={`${product.marca}${product.inventorySource ? '' : ` - ${product.nombre}`}`}
                   loading="lazy"
                   onError={() => setImageError(true)}
                   className="w-full h-full object-cover"
@@ -141,7 +153,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({ product, onClose }) 
 
               {/* Availability Floating Badge */}
               <div className="absolute top-3 left-3">
-                {product.disponible ? (
+                {selectedAvailability ? (
                   <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-950/85 text-emerald-300 border border-emerald-700/60 backdrop-blur-md">
                     <span className="w-2 h-2 rounded-full bg-emerald-400" />
                     Disponible en tienda
@@ -165,7 +177,9 @@ export const ProductModal: React.FC<ProductModalProps> = ({ product, onClose }) 
               </div>
               <div className="text-right">
                 <span className="text-xs text-zinc-300 font-semibold block">{product.categoria}</span>
-                <span className="text-[11px] text-zinc-500 font-mono">1 imagen / modelo</span>
+                <span className="text-[11px] text-zinc-500 font-mono">
+                  {product.inventorySource ? 'Imagen de marca' : '1 imagen / modelo'}
+                </span>
               </div>
             </div>
 
@@ -193,7 +207,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({ product, onClose }) 
           {/* Modal Action Footer */}
           <div className="p-3.5 bg-zinc-950 border-t border-zinc-800/80 shrink-0 flex items-center justify-between gap-3">
             <span className="text-xs text-zinc-400 truncate">
-              {product.nombre} {selectedVariant ? `(${selectedVariant})` : ''}
+            {product.inventorySource ? product.marca : product.nombre} {selectedVariant ? `(${selectedVariant})` : ''}
             </span>
             <button
               type="button"

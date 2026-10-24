@@ -112,7 +112,9 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onClick }) =>
         {/* Card Footer: Price & Touch indicator */}
         <div className="mt-2.5 pt-2 border-t border-zinc-800/60 flex items-center justify-between">
           <div>
-            <span className="text-[10px] text-zinc-400 block font-medium">Precio</span>
+            <span className="text-[10px] text-zinc-400 block font-medium">
+              {product.inventoryVariants?.length ? 'Desde' : 'Precio'}
+            </span>
             <span className="font-mono text-base sm:text-lg font-bold text-emerald-400">
               {formattedPrice}
             </span>

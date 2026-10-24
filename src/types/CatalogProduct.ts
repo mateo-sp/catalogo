@@ -9,6 +9,12 @@ export interface CatalogProduct {
   visible: boolean;
   disponible: boolean;
   variantes?: string[];
+  inventoryVariants?: {
+    id: string;
+    nombre: string;
+    precio: number;
+    disponible: boolean;
+  }[];
   updatedAt?: number;
   inventorySource?: boolean;
 }
