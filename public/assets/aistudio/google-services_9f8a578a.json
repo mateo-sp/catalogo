@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "118823441088",
+    "project_id": "ventas-de-vapers",
+    "storage_bucket": "ventas-de-vapers.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:118823441088:android:1f1ecf8e1150d264b3d325",
+        "android_client_info": {
+          "package_name": "com.example.myapplication"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCTXLlXJ0QyeiNtQf7e_cyJNcUxxGqWdcw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
