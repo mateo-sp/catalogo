@@ -175,6 +175,8 @@ export const catalogService = {
             const precio = Number(data.precio ?? data.sellingPrice ?? 0);
             const disponible = data.disponible !== false;
             if (data.inventorySource === true) {
+              if (!disponible) return;
+
               const brandKey = marca.trim().toLowerCase();
               const group = inventoryByBrand.get(brandKey);
               const inventoryVariant = {
