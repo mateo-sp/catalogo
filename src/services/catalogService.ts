@@ -1,4 +1,4 @@
-import { collection, onSnapshot, doc, setDoc, deleteDoc, getDocs } from 'firebase/firestore';
+import { collection, onSnapshot, doc, setDoc, deleteDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { CatalogProduct, SortOption } from '../types/CatalogProduct';
 import { Brand } from '../types/catalog';
@@ -9,7 +9,6 @@ import vaporessoImage from '../assets/images/brand_vaporesso_1792848923178.jpg';
 import voopooImage from '../assets/images/brand_voopoo_1792848922908.jpg';
 
 export const CATALOG_COLLECTION = 'catalogo_publico';
-const INVENTORY_COLLECTION = 'productos';
 
 const BRAND_IMAGES: Record<string, string> = {
   'elf bar': elfBarImage,
@@ -144,29 +143,6 @@ export const SAMPLE_CATALOG_PRODUCTS: CatalogProduct[] = [
 ];
 
 export const catalogService = {
-  async fetchInventoryBrands(): Promise<Brand[]> {
-    const snapshot = await getDocs(collection(db, INVENTORY_COLLECTION));
-    const brands = new Map<string, Brand>();
-
-    snapshot.forEach((productDoc) => {
-      const data = productDoc.data();
-      const name = String(data.marca || data.brand || '').trim();
-      const key = name.toLowerCase();
-      if (!name || data.isDeleted === true || brands.has(key)) return;
-
-      brands.set(key, {
-        id: key,
-        name,
-        logo: getBrandImage(name),
-        description: '',
-      });
-    });
-
-    return Array.from(brands.values()).sort((a, b) =>
-      a.name.localeCompare(b.name)
-    );
-  },
-
   getBrandImage,
 
   /**
@@ -208,6 +184,7 @@ export const catalogService = {
               disponible: data.disponible !== false,
               variantes: Array.isArray(data.variantes) ? data.variantes : [],
               updatedAt: data.updatedAt || Date.now(),
+              inventorySource: data.inventorySource === true,
             });
           }
         });

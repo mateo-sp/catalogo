@@ -1,9 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
-  collection, onSnapshot, doc, setDoc, deleteDoc, getDoc, updateDoc
+  collection, onSnapshot, doc, setDoc, deleteDoc, getDoc, updateDoc, writeBatch
 } from 'firebase/firestore';
 import { db } from '../firebase';
-import { CATALOG_COLLECTION, catalogService } from '../services/catalogService';
+import {
+  CATALOG_COLLECTION,
+  catalogService,
+  SAMPLE_CATALOG_PRODUCTS,
+} from '../services/catalogService';
 import { CatalogProduct } from '../types/CatalogProduct';
 import { Brand } from '../types/catalog';
 import { AdminProductForm } from './AdminProductForm';
@@ -29,7 +33,6 @@ function getErrorMessage(error: unknown, fallback: string): string {
 export const AdminPanel: React.FC<AdminPanelProps> = ({ adminUser, onLogout, onClose }) => {
   const [view, setView] = useState<PanelView>('products');
   const [products, setProducts] = useState<CatalogProduct[]>([]);
-  const [inventoryBrands, setInventoryBrands] = useState<Brand[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(true);
   const [editingProduct, setEditingProduct] = useState<CatalogProduct | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -69,6 +72,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ adminUser, onLogout, onC
           disponible: data.disponible !== false,
           variantes: Array.isArray(data.variantes) ? data.variantes : [],
           updatedAt: data.updatedAt,
+          inventorySource: data.inventorySource === true,
         });
       });
       items.sort((a, b) => a.nombre.localeCompare(b.nombre));
@@ -77,22 +81,18 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ adminUser, onLogout, onC
     }, (error) => {
       console.error('Error al cargar productos del catálogo:', error);
       setLoadingProducts(false);
-      showToast('No se pudieron cargar los productos.', false);
+      showToast(
+        getErrorMessage(error, 'No se pudieron cargar los productos.'),
+        false
+      );
     });
     return () => unsub();
   }, []);
 
-  useEffect(() => {
-    catalogService.fetchInventoryBrands()
-      .then(setInventoryBrands)
-      .catch((error) => {
-        console.error('Error al cargar las marcas del inventario:', error);
-        showToast('No se pudieron cargar las marcas del inventario.', false);
-      });
-  }, []);
-
   // Cargar configuración de la tienda
   useEffect(() => {
+    if (view !== 'settings') return;
+
     (async () => {
       try {
         const configDoc = await getDoc(doc(db, 'admin_config', 'store'));
@@ -105,20 +105,44 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ adminUser, onLogout, onC
         }
       } catch (error) {
         console.error('Error al cargar la configuración de administración:', error);
-        showToast('No se pudo cargar la configuración de administración.', false);
+        showToast(
+          getErrorMessage(
+            error,
+            'No se pudo cargar la configuración de administración.'
+          ),
+          false
+        );
       }
     })();
-  }, []);
+  }, [view]);
 
   /** Guardar o crear producto en Firestore */
   const handleSaveProduct = async (data: Omit<CatalogProduct, 'id'> & { id?: string }) => {
     try {
       const { id, ...fields } = data;
       const productId = id || `prod-${Date.now()}`;
-      await setDoc(doc(db, CATALOG_COLLECTION, productId), {
+      const batch = writeBatch(db);
+      const updatedAt = Date.now();
+      batch.set(doc(db, CATALOG_COLLECTION, productId), {
         ...fields,
-        updatedAt: Date.now(),
+        updatedAt,
       }, { merge: true });
+      if (editingProduct?.inventorySource && id) {
+        batch.update(doc(db, 'productos', id), {
+          name: fields.nombre,
+          nombre: fields.nombre,
+          brand: fields.marca,
+          marca: fields.marca,
+          category: fields.categoria,
+          categoria: fields.categoria,
+          sellingPrice: fields.precio,
+          precio: fields.precio,
+          notes: fields.descripcion || '',
+          updatedAt,
+          updatedBy: adminUser.email,
+        });
+      }
+      await batch.commit();
       showToast(id ? 'Producto actualizado correctamente.' : 'Producto creado correctamente.');
       setView('products');
       setEditingProduct(null);
@@ -201,21 +225,24 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ adminUser, onLogout, onC
       p.nombre.toLowerCase().includes(searchQuery.toLowerCase()) ||
       p.marca.toLowerCase().includes(searchQuery.toLowerCase())
   );
-  const brandOptions = [
-    ...inventoryBrands,
-    ...products
-      .filter((product) =>
-        !inventoryBrands.some(
-          (brand) => brand.name.toLowerCase() === product.marca.toLowerCase()
-        )
-      )
-      .map((product) => ({
-        id: product.marca,
-        name: product.marca,
-        logo: catalogService.getBrandImage(product.marca),
+  const brandOptions = useMemo(() => {
+    const brands = new Map<string, Brand>();
+    [...SAMPLE_CATALOG_PRODUCTS, ...products].forEach((product) => {
+      const name = product.marca.trim();
+      const key = name.toLowerCase();
+      if (!name || brands.has(key)) return;
+
+      brands.set(key, {
+        id: key,
+        name,
+        logo: product.imagenUrl || catalogService.getBrandImage(name),
         description: '',
-      })),
-  ];
+      });
+    });
+    return Array.from(brands.values()).sort((a, b) =>
+      a.name.localeCompare(b.name)
+    );
+  }, [products]);
 
   return (
     <div className="fixed inset-0 z-50 bg-zinc-950 flex flex-col animate-in fade-in duration-200">
@@ -361,6 +388,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ adminUser, onLogout, onC
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <span className="text-xs font-extrabold text-white truncate">{product.nombre}</span>
+                        {product.inventorySource && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-sky-950/50 text-sky-300 border border-sky-800/40 shrink-0">
+                            Inventario
+                          </span>
+                        )}
                         {!product.visible && (
                           <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-zinc-800 text-zinc-500 border border-zinc-700 shrink-0">Oculto</span>
                         )}

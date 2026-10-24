@@ -120,9 +120,16 @@ export const AdminProductForm: React.FC<AdminProductFormProps> = ({
     <form onSubmit={handleSubmit} className="space-y-5">
       {/* Header del formulario */}
       <div className="flex items-center justify-between">
-        <h3 className="font-extrabold text-sm text-white">
-          {isEditing ? `Editando: ${product?.nombre}` : 'Nuevo Producto'}
-        </h3>
+        <div>
+          <h3 className="font-extrabold text-sm text-white">
+            {isEditing ? `Editando: ${product?.nombre}` : 'Nuevo Producto'}
+          </h3>
+          {product?.inventorySource && (
+            <p className="mt-1 text-[11px] text-zinc-500">
+              Vinculado al inventario: nombre, marca, categoría y precio también se actualizan allí.
+            </p>
+          )}
+        </div>
         <button
           type="button"
           onClick={onCancel}
@@ -242,13 +249,20 @@ export const AdminProductForm: React.FC<AdminProductFormProps> = ({
       <div className="grid grid-cols-2 gap-3">
         {[
           { key: 'visible' as const, label: 'Visible en catálogo', desc: 'Aparece en el listado público' },
-          { key: 'disponible' as const, label: 'Disponible', desc: 'Muestra badge de stock disponible' },
+          {
+            key: 'disponible' as const,
+            label: 'Disponible',
+            desc: product?.inventorySource
+              ? 'Se determina automáticamente por el stock'
+              : 'Muestra badge de stock disponible',
+          },
         ].map(({ key, label, desc }) => (
           <button
             key={key}
             type="button"
             onClick={() => handleField(key, !form[key])}
-            className={`p-3 rounded-xl border text-left transition-all ${
+            disabled={product?.inventorySource && key === 'disponible'}
+            className={`p-3 rounded-xl border text-left transition-all disabled:cursor-not-allowed disabled:opacity-60 ${
               form[key]
                 ? 'bg-emerald-950/40 border-emerald-700/60 text-emerald-300'
                 : 'bg-zinc-900/60 border-zinc-800 text-zinc-500'

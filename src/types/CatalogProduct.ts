@@ -10,6 +10,7 @@ export interface CatalogProduct {
   disponible: boolean;
   variantes?: string[];
   updatedAt?: number;
+  inventorySource?: boolean;
 }
 
 export type SortOption = 'name-asc' | 'name-desc' | 'price-asc' | 'price-desc' | 'brand-asc';
