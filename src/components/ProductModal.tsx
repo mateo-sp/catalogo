@@ -2,13 +2,24 @@ import React, { useEffect, useState } from 'react';
 import { CatalogProduct } from '../types/CatalogProduct';
 import { VariantList } from './VariantList';
 import { X, Flame, MessageCircle } from 'lucide-react';
+import {
+  DEFAULT_WHATSAPP_MESSAGE_TEMPLATE,
+  formatWhatsAppMessage,
+} from '../services/catalogService';
 
 interface ProductModalProps {
   product: CatalogProduct | null;
+  storeName: string;
+  whatsAppMessageTemplate: string;
   onClose: () => void;
 }
 
-export const ProductModal: React.FC<ProductModalProps> = ({ product, onClose }) => {
+export const ProductModal: React.FC<ProductModalProps> = ({
+  product,
+  storeName,
+  whatsAppMessageTemplate,
+  onClose,
+}) => {
   const [imageError, setImageError] = useState(false);
   const [selectedVariant, setSelectedVariant] = useState<string | null>(null);
 
@@ -67,14 +78,19 @@ export const ProductModal: React.FC<ProductModalProps> = ({ product, onClose }) 
     const chosenAvailability = chosenInventoryVariant?.disponible ?? product.disponible;
     const chosenFormattedPrice = formatPrice(chosenPrice);
 
-    let orderText = `🛒 *HOLA supposhop! Quiero consultar / hacer un pedido:*\n\n`;
-    orderText += `• *Modelo:* ${product.marca}${product.inventorySource ? '' : ` - ${product.nombre}`}\n`;
-    if (chosenVariant) {
-      orderText += `• *Sabor / Variante:* ${chosenVariant}\n`;
-    }
-    orderText += `• *Precio:* ${chosenFormattedPrice}\n`;
-    orderText += `• *Disponibilidad:* ${chosenAvailability ? 'Disponible' : 'Consultar stock'}\n\n`;
-    orderText += `¿Tienen stock disponible para coordinar la entrega?`;
+    const orderText = formatWhatsAppMessage(
+      whatsAppMessageTemplate || DEFAULT_WHATSAPP_MESSAGE_TEMPLATE,
+      {
+        tienda: storeName,
+        marca: product.marca,
+        producto: product.inventorySource
+          ? chosenVariant || product.marca
+          : product.nombre,
+        sabor: chosenVariant || product.nombre,
+        precio: chosenFormattedPrice,
+        disponibilidad: chosenAvailability ? 'Disponible' : 'Consultar stock',
+      }
+    );
 
     // Try Web Share API on mobile devices first
     if (navigator.share && /mobile|android|iphone|ipad/i.test(navigator.userAgent)) {

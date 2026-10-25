@@ -4,7 +4,12 @@
  */
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { catalogService } from './services/catalogService';
+import { doc, onSnapshot } from 'firebase/firestore';
+import { db } from './firebase';
+import {
+  catalogService,
+  DEFAULT_WHATSAPP_MESSAGE_TEMPLATE,
+} from './services/catalogService';
 import { CatalogProduct, SortOption } from './types/CatalogProduct';
 import { Header } from './components/Header';
 import { SearchBar } from './components/SearchBar';
@@ -21,6 +26,10 @@ export default function App() {
   const [products, setProducts] = useState<CatalogProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [isRealtimeConnected, setIsRealtimeConnected] = useState(false);
+  const [storeName, setStoreName] = useState('supposhop');
+  const [whatsAppMessageTemplate, setWhatsAppMessageTemplate] = useState(
+    DEFAULT_WHATSAPP_MESSAGE_TEMPLATE
+  );
 
   // Search, Category, and Sort State
   const [searchQuery, setSearchQuery] = useState('');
@@ -64,6 +73,25 @@ export default function App() {
 
     return () => unsubscribe();
   }, []);
+
+  useEffect(() => onSnapshot(
+    doc(db, 'admin_config', 'store'),
+    (snapshot) => {
+      if (!snapshot.exists()) {
+        setStoreName('supposhop');
+        setWhatsAppMessageTemplate(DEFAULT_WHATSAPP_MESSAGE_TEMPLATE);
+        return;
+      }
+      const config = snapshot.data();
+      setStoreName(config.storeName || 'supposhop');
+      setWhatsAppMessageTemplate(
+        config.whatsAppMessageTemplate || DEFAULT_WHATSAPP_MESSAGE_TEMPLATE
+      );
+    },
+    (error) => {
+      console.error('No se pudo cargar la plantilla pública de WhatsApp:', error);
+    }
+  ), []);
 
   // Compute available categories and item counts
   const { categories, categoryCounts } = useMemo(() => {
@@ -159,6 +187,8 @@ export default function App() {
       {/* Modal con detalle de producto */}
       <ProductModal
         product={selectedProduct}
+        storeName={storeName}
+        whatsAppMessageTemplate={whatsAppMessageTemplate}
         onClose={() => setSelectedProduct(null)}
       />
 

@@ -51,11 +51,9 @@ service cloud.firestore {
       allow write: if isAuthorizedAdmin();
     }
 
-    // Configuración de la app del admin (store name, lista de emails de admins)
-    // Lectura: cualquier usuario autenticado (para verificar acceso)
-    // Escritura: solo admins
+    // El catálogo puede leer la plantilla pública de la tienda; la lista de admins sigue protegida.
     match /admin_config/{docId} {
-      allow read: if isSignedIn();
+      allow read: if isSignedIn() || docId == 'store';
       allow write: if isAuthorizedAdmin();
     }
   }

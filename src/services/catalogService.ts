@@ -10,6 +10,35 @@ import voopooImage from '../assets/images/brand_voopoo_1792848922908.jpg';
 
 export const CATALOG_COLLECTION = 'catalogo_publico';
 
+export const DEFAULT_WHATSAPP_MESSAGE_TEMPLATE = `Hola {tienda}, quiero consultar por este producto:
+
+• Marca: {marca}
+• Producto: {producto}
+• Sabor: {sabor}
+• Precio: {precio}
+• Disponibilidad: {disponibilidad}
+
+¿Me confirman si hay stock y cómo coordinar la entrega?`;
+
+export interface WhatsAppMessageValues {
+  tienda: string;
+  marca: string;
+  producto: string;
+  sabor: string;
+  precio: string;
+  disponibilidad: string;
+}
+
+export function formatWhatsAppMessage(
+  template: string,
+  values: WhatsAppMessageValues
+): string {
+  return template.replace(
+    /\{(tienda|marca|producto|sabor|precio|disponibilidad)\}/g,
+    (_, key: keyof WhatsAppMessageValues) => values[key]
+  );
+}
+
 const BRAND_IMAGES: Record<string, string> = {
   'elf bar': elfBarImage,
   elfbar: elfBarImage,

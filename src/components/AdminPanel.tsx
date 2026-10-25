@@ -6,6 +6,7 @@ import { db } from '../firebase';
 import {
   CATALOG_COLLECTION,
   catalogService,
+  DEFAULT_WHATSAPP_MESSAGE_TEMPLATE,
   SAMPLE_CATALOG_PRODUCTS,
 } from '../services/catalogService';
 import { CatalogProduct } from '../types/CatalogProduct';
@@ -14,7 +15,7 @@ import { AdminProductForm } from './AdminProductForm';
 import { AdminUser } from '../hooks/useAdminAuth';
 import {
   X, Plus, Pencil, Trash2, LogOut, Shield, Search,
-  Eye, EyeOff, Package, Settings, Users, Flame,
+  Eye, EyeOff, Package, Settings, Users, Flame, MessageCircle,
   ChevronRight, AlertCircle, Check, Loader2, Store
 } from 'lucide-react';
 
@@ -42,6 +43,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ adminUser, onLogout, onC
 
   // Settings state
   const [storeName, setStoreName] = useState('supposhop');
+  const [whatsAppMessageTemplate, setWhatsAppMessageTemplate] = useState(
+    DEFAULT_WHATSAPP_MESSAGE_TEMPLATE
+  );
   const [savingSettings, setSavingSettings] = useState(false);
   const [adminEmails, setAdminEmails] = useState<string[]>([]);
   const [newAdminEmail, setNewAdminEmail] = useState('');
@@ -98,6 +102,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ adminUser, onLogout, onC
         const configDoc = await getDoc(doc(db, 'admin_config', 'store'));
         if (configDoc.exists()) {
           setStoreName(configDoc.data().storeName || 'supposhop');
+          setWhatsAppMessageTemplate(
+            configDoc.data().whatsAppMessageTemplate ||
+            DEFAULT_WHATSAPP_MESSAGE_TEMPLATE
+          );
+        } else {
+          setStoreName('supposhop');
+          setWhatsAppMessageTemplate(DEFAULT_WHATSAPP_MESSAGE_TEMPLATE);
         }
         const emailsDoc = await getDoc(doc(db, 'admin_config', 'emails'));
         if (emailsDoc.exists()) {
@@ -179,10 +190,19 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ adminUser, onLogout, onC
 
   /** Guardar config de la tienda */
   const handleSaveSettings = async () => {
+    if (
+      !whatsAppMessageTemplate.includes('{sabor}') ||
+      !whatsAppMessageTemplate.includes('{precio}')
+    ) {
+      showToast('El mensaje debe conservar los campos {sabor} y {precio}.', false);
+      return;
+    }
+
     setSavingSettings(true);
     try {
       await setDoc(doc(db, 'admin_config', 'store'), {
         storeName: storeName.trim() || 'supposhop',
+        whatsAppMessageTemplate: whatsAppMessageTemplate.trim(),
         updatedAt: Date.now(),
       }, { merge: true });
       showToast('Configuración guardada.');
@@ -522,8 +542,48 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ adminUser, onLogout, onC
                 </button>
               </div>
               <div className="p-3 rounded-xl bg-zinc-950/60 border border-zinc-800 text-[11px] text-zinc-400">
-                Vista previa del mensaje: <span className="text-zinc-200">🛒 <strong>HOLA {storeName || 'supposhop'}!</strong> Quiero consultar / hacer un pedido...</span>
               </div>
+            </div>
+
+            {/* Plantilla del mensaje de WhatsApp */}
+            <div className="bg-zinc-900/60 border border-zinc-800 rounded-2xl p-5 space-y-4">
+              <div className="flex items-center gap-2">
+                <MessageCircle className="w-4 h-4 text-emerald-400" />
+                <h3 className="font-bold text-sm text-white">Mensaje de WhatsApp</h3>
+              </div>
+              <p className="text-[11px] text-zinc-400">
+                Personalizá el texto. Los campos de sabor y precio son obligatorios y se completan con el producto elegido.
+              </p>
+              <textarea
+                value={whatsAppMessageTemplate}
+                onChange={(e) => setWhatsAppMessageTemplate(e.target.value)}
+                rows={9}
+                maxLength={1200}
+                placeholder={DEFAULT_WHATSAPP_MESSAGE_TEMPLATE}
+                className="w-full px-3 py-2.5 rounded-xl bg-zinc-950 border border-zinc-700 focus:border-violet-500 text-white text-xs outline-none transition-all resize-y"
+              />
+              <p className="text-[11px] text-zinc-500">
+                Campos disponibles: {'{tienda}'}, {'{marca}'}, {'{producto}'}, {'{sabor}'}, {'{precio}'} y {'{disponibilidad}'}.
+                Debés conservar {'{sabor}'} y {'{precio}'}.
+              </p>
+              <div className="p-3 rounded-xl bg-zinc-950/60 border border-zinc-800 text-[11px] text-zinc-400 whitespace-pre-wrap">
+                Vista previa:{'\n'}
+                {whatsAppMessageTemplate
+                  .replaceAll('{tienda}', storeName || 'supposhop')
+                  .replaceAll('{marca}', 'Geek Bar')
+                  .replaceAll('{producto}', 'Pulse')
+                  .replaceAll('{sabor}', 'Watermelon Ice')
+                  .replaceAll('{precio}', '$26.000')
+                  .replaceAll('{disponibilidad}', 'Disponible')}
+              </div>
+              <button
+                onClick={handleSaveSettings}
+                disabled={savingSettings}
+                className="h-10 px-4 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-xs font-bold flex items-center gap-1.5 transition-all disabled:opacity-50"
+              >
+                {savingSettings ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                Guardar mensaje
+              </button>
             </div>
 
             {/* Gestión de administradores */}
