@@ -16,7 +16,7 @@ import { AdminUser } from '../hooks/useAdminAuth';
 import {
   X, Plus, Pencil, Trash2, LogOut, Shield, Search,
   Eye, EyeOff, Package, Settings, Users, Flame, MessageCircle,
-  ChevronRight, AlertCircle, Check, Loader2, Store
+  ChevronDown, ChevronRight, AlertCircle, Check, Loader2, Store
 } from 'lucide-react';
 
 interface AdminPanelProps {
@@ -40,6 +40,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ adminUser, onLogout, onC
   const [toastMsg, setToastMsg] = useState<{ text: string; ok: boolean } | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [collapsedBrands, setCollapsedBrands] = useState<Set<string>>(new Set());
 
   // Settings state
   const [storeName, setStoreName] = useState('supposhop');
@@ -191,10 +192,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ adminUser, onLogout, onC
   /** Guardar config de la tienda */
   const handleSaveSettings = async () => {
     if (
+      !whatsAppMessageTemplate.includes('{marca}') ||
       !whatsAppMessageTemplate.includes('{sabor}') ||
       !whatsAppMessageTemplate.includes('{precio}')
     ) {
-      showToast('El mensaje debe conservar los campos {sabor} y {precio}.', false);
+      showToast('El mensaje debe conservar los campos {marca}, {sabor} y {precio}.', false);
       return;
     }
 
@@ -245,6 +247,33 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ adminUser, onLogout, onC
       p.nombre.toLowerCase().includes(searchQuery.toLowerCase()) ||
       p.marca.toLowerCase().includes(searchQuery.toLowerCase())
   );
+  const productsByBrand = useMemo(() => {
+    const groups = new Map<string, { brand: string; products: CatalogProduct[] }>();
+    filteredProducts.forEach((product) => {
+      const brand = product.marca.trim() || 'Sin marca';
+      const key = brand.toLocaleLowerCase();
+      const group = groups.get(key) || { brand, products: [] };
+      group.products.push(product);
+      groups.set(key, group);
+    });
+    return Array.from(groups.entries())
+      .map(([key, group]) => ({
+        key,
+        ...group,
+        products: group.products.sort((a, b) => a.nombre.localeCompare(b.nombre)),
+      }))
+      .sort((a, b) => a.brand.localeCompare(b.brand));
+  }, [filteredProducts]);
+
+  const toggleBrandCollapsed = (brandKey: string) => {
+    setCollapsedBrands((current) => {
+      const updated = new Set(current);
+      if (updated.has(brandKey)) updated.delete(brandKey);
+      else updated.add(brandKey);
+      return updated;
+    });
+  };
+
   const brandOptions = useMemo(() => {
     const brands = new Map<string, Brand>();
     [...SAMPLE_CATALOG_PRODUCTS, ...products].forEach((product) => {
@@ -383,8 +412,43 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ adminUser, onLogout, onC
                 {searchQuery ? 'No hay resultados para la búsqueda.' : 'No hay productos en el catálogo aún.'}
               </div>
             ) : (
-              <div className="space-y-2">
-                {filteredProducts.map((product) => (
+              <div className="space-y-4">
+                {productsByBrand.map((group) => {
+                  const isCollapsed = collapsedBrands.has(group.key);
+                  return (
+                    <section key={group.key} className="overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900/30">
+                      <button
+                        type="button"
+                        onClick={() => toggleBrandCollapsed(group.key)}
+                        aria-expanded={!isCollapsed}
+                        className="flex w-full items-center gap-3 p-3 text-left hover:bg-zinc-900/70 transition-colors"
+                      >
+                        <div className="h-10 w-10 shrink-0 overflow-hidden rounded-xl border border-zinc-700/50 bg-zinc-800">
+                          {group.products[0].imagenUrl ? (
+                            <img src={group.products[0].imagenUrl} alt="" className="h-full w-full object-cover" />
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center">
+                              <Flame className="h-4 w-4 text-zinc-600" />
+                            </div>
+                          )}
+                        </div>
+                        <span className="min-w-0 flex-1 truncate text-sm font-extrabold text-white">
+                          {group.brand}
+                        </span>
+                        <span className="rounded-full bg-zinc-800 px-2 py-0.5 text-[10px] text-zinc-400">
+                          {group.products.length}{' '}
+                          {group.products.every((product) => product.inventorySource)
+                            ? group.products.length === 1 ? 'sabor' : 'sabores'
+                            : group.products.length === 1 ? 'producto' : 'productos'}
+                        </span>
+                        {isCollapsed
+                          ? <ChevronRight className="h-4 w-4 text-zinc-500" />
+                          : <ChevronDown className="h-4 w-4 text-zinc-500" />}
+                      </button>
+
+                      {!isCollapsed && (
+                        <div className="space-y-2 border-t border-zinc-800/80 p-2">
+                {group.products.map((product) => (
                   <div
                     key={product.id}
                     className={`group flex items-center gap-3 p-3 rounded-2xl border transition-all ${
@@ -421,7 +485,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ adminUser, onLogout, onC
                         )}
                       </div>
                       <div className="flex items-center gap-2 mt-0.5">
-                        <span className="text-[11px] text-violet-400 font-bold">{product.marca}</span>
+                        <span className="text-[11px] text-violet-400 font-bold">{product.inventorySource ? 'Sabor' : product.marca}</span>
                         <span className="text-zinc-600 text-[10px]">·</span>
                         <span className="text-[11px] text-zinc-500">{product.categoria}</span>
                         <span className="text-zinc-600 text-[10px]">·</span>
@@ -485,6 +549,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ adminUser, onLogout, onC
                     </div>
                   </div>
                 ))}
+                        </div>
+                      )}
+                    </section>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -552,7 +621,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ adminUser, onLogout, onC
                 <h3 className="font-bold text-sm text-white">Mensaje de WhatsApp</h3>
               </div>
               <p className="text-[11px] text-zinc-400">
-                Personalizá el texto. Los campos de sabor y precio son obligatorios y se completan con el producto elegido.
+                Personalizá el texto. Marca, sabor y precio son obligatorios y se completan con el producto elegido.
               </p>
               <textarea
                 value={whatsAppMessageTemplate}
@@ -564,7 +633,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ adminUser, onLogout, onC
               />
               <p className="text-[11px] text-zinc-500">
                 Campos disponibles: {'{tienda}'}, {'{marca}'}, {'{producto}'}, {'{sabor}'}, {'{precio}'} y {'{disponibilidad}'}.
-                Debés conservar {'{sabor}'} y {'{precio}'}.
+                Debés conservar {'{marca}'}, {'{sabor}'} y {'{precio}'}.
               </p>
               <div className="p-3 rounded-xl bg-zinc-950/60 border border-zinc-800 text-[11px] text-zinc-400 whitespace-pre-wrap">
                 Vista previa:{'\n'}

@@ -20,7 +20,7 @@ import { LoadingState } from './components/LoadingState';
 import { AdminLoginModal } from './components/AdminLoginModal';
 import { AdminPanel } from './components/AdminPanel';
 import { useAdminAuth } from './hooks/useAdminAuth';
-import { ShieldCheck, Database } from 'lucide-react';
+import { Database } from 'lucide-react';
 
 export default function App() {
   const [products, setProducts] = useState<CatalogProduct[]>([]);
@@ -213,11 +213,6 @@ export default function App() {
       {/* Footer */}
       <footer className="mt-auto border-t border-zinc-900 bg-zinc-950 px-4 py-6 text-zinc-500 text-xs">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
-          <div className="flex items-center gap-2 text-zinc-400">
-            <ShieldCheck className="w-4 h-4 text-emerald-400" />
-            <span>Catálogo público seguro conectado a Firebase Firestore</span>
-          </div>
-
           <div className="flex items-center gap-3">
             <button
               onClick={handleAdminButtonClick}
