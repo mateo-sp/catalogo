@@ -233,8 +233,6 @@ export const catalogService = {
                   descripcion: '',
                   imagenUrl:
                     data.imagenUrl ||
-                    data.imageUrl ||
-                    getBrandImage(marca) ||
                     '',
                   visible: true,
                   disponible,
@@ -270,6 +268,7 @@ export const catalogService = {
         inventoryByBrand.forEach((product) => {
           product.variantes = [...new Set(product.variantes)];
           product.inventoryVariants?.sort((a, b) => a.nombre.localeCompare(b.nombre));
+          product.imagenUrl = product.imagenUrl || getBrandImage(product.marca) || '';
           items.push(product);
         });
         callback(items);

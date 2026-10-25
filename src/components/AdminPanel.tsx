@@ -154,6 +154,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ adminUser, onLogout, onC
           sellingPrice: fields.precio,
           precio: fields.precio,
           notes: fields.descripcion || '',
+          imageUrl: fields.imagenUrl,
           updatedAt,
           updatedBy: adminUser.email,
         });
