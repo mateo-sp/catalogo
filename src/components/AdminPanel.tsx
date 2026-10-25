@@ -15,7 +15,7 @@ import { AdminProductForm } from './AdminProductForm';
 import { AdminUser } from '../hooks/useAdminAuth';
 import {
   X, Plus, Pencil, Trash2, LogOut, Shield, Search,
-  Eye, EyeOff, Package, Settings, Users, Flame, MessageCircle,
+  Eye, EyeOff, Package, Settings, Users, Flame, MessageCircle, Image,
   ChevronDown, ChevronRight, AlertCircle, Check, Loader2, Store
 } from 'lucide-react';
 
@@ -41,6 +41,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ adminUser, onLogout, onC
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [collapsedBrands, setCollapsedBrands] = useState<Set<string>>(new Set());
+  const [brandSettingsDrafts, setBrandSettingsDrafts] = useState<
+    Record<string, { price: string; imageUrl: string }>
+  >({});
+  const [savingBrandKey, setSavingBrandKey] = useState<string | null>(null);
 
   // Settings state
   const [storeName, setStoreName] = useState('supposhop');
@@ -163,6 +167,53 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ adminUser, onLogout, onC
     }
   };
 
+  const handleSaveBrandSettings = async (brandKey: string, brand: string) => {
+    const brandProducts = products.filter(
+      (product) => product.marca.trim().toLocaleLowerCase() === brandKey
+    );
+    const draft = brandSettingsDrafts[brandKey];
+    const price = Number(draft?.price);
+    const imageUrl = (draft?.imageUrl ?? brandProducts[0]?.imagenUrl ?? '').trim();
+    if (!brandProducts.length || !Number.isFinite(price) || price < 0) {
+      showToast('Ingresá un precio válido para la marca.', false);
+      return;
+    }
+
+    setSavingBrandKey(brandKey);
+    try {
+      const updatedAt = Date.now();
+      for (let start = 0; start < brandProducts.length; start += 250) {
+        const batch = writeBatch(db);
+        const chunk = brandProducts.slice(start, start + 250);
+        chunk.forEach((product) => {
+          batch.set(doc(db, CATALOG_COLLECTION, product.id), {
+            precio: price,
+            imagenUrl: imageUrl,
+            updatedAt,
+          }, { merge: true });
+          if (product.inventorySource) {
+            batch.update(doc(db, 'productos', product.id), {
+              sellingPrice: price,
+              precio: price,
+              imageUrl,
+              updatedAt,
+              updatedBy: adminUser.email,
+            });
+          }
+        });
+        await batch.commit();
+      }
+      showToast(`Imagen y precio de ${brand} actualizados en todos sus sabores.`);
+    } catch (error) {
+      showToast(
+        getErrorMessage(error, `No se pudo actualizar la marca ${brand}.`),
+        false
+      );
+    } finally {
+      setSavingBrandKey(null);
+    }
+  };
+
   /** Eliminar producto */
   const handleDeleteProduct = async (id: string) => {
     setDeletingId(id);
@@ -260,6 +311,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ adminUser, onLogout, onC
       .map(([key, group]) => ({
         key,
         ...group,
+        allProducts: products.filter(
+          (product) => product.marca.trim().toLocaleLowerCase() === key
+        ),
         products: group.products.sort((a, b) => a.nombre.localeCompare(b.nombre)),
       }))
       .sort((a, b) => a.brand.localeCompare(b.brand));
@@ -447,6 +501,78 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ adminUser, onLogout, onC
                       </button>
 
                       {!isCollapsed && (
+                        <>
+                        <div className="grid gap-3 border-t border-zinc-800/80 bg-zinc-950/40 p-3 sm:grid-cols-[minmax(0,1fr)_10rem_auto]">
+                          <label className="space-y-1.5">
+                            <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-zinc-400">
+                              <Image className="h-3 w-3" /> Imagen de marca (URL)
+                            </span>
+                            <input
+                              type="url"
+                              value={
+                                brandSettingsDrafts[group.key]?.imageUrl ??
+                                group.allProducts[0]?.imagenUrl ??
+                                ''
+                              }
+                              onChange={(event) =>
+                                setBrandSettingsDrafts((current) => ({
+                                  ...current,
+                                  [group.key]: {
+                                    price:
+                                      current[group.key]?.price ??
+                                      String(group.allProducts[0]?.precio ?? ''),
+                                    imageUrl: event.target.value,
+                                  },
+                                }))
+                              }
+                              placeholder="https://.../imagen.jpg"
+                              className="h-9 w-full rounded-lg border border-zinc-700 bg-zinc-950 px-2.5 text-xs text-white outline-none focus:border-violet-500"
+                            />
+                          </label>
+                          <label className="space-y-1.5">
+                            <span className="block text-[10px] font-bold uppercase tracking-wider text-zinc-400">
+                              Precio común (ARS)
+                            </span>
+                            <input
+                              type="number"
+                              min={0}
+                              step={500}
+                              value={
+                                brandSettingsDrafts[group.key]?.price ??
+                                (group.allProducts.every(
+                                  (product) => product.precio === group.allProducts[0]?.precio
+                                )
+                                  ? String(group.allProducts[0]?.precio ?? '')
+                                  : '')
+                              }
+                              onChange={(event) =>
+                                setBrandSettingsDrafts((current) => ({
+                                  ...current,
+                                  [group.key]: {
+                                    price: event.target.value,
+                                    imageUrl:
+                                      current[group.key]?.imageUrl ??
+                                      group.allProducts[0]?.imagenUrl ??
+                                      '',
+                                  },
+                                }))
+                              }
+                              placeholder="Precio para todos"
+                              className="h-9 w-full rounded-lg border border-zinc-700 bg-zinc-950 px-2.5 text-xs text-white outline-none focus:border-violet-500"
+                            />
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => handleSaveBrandSettings(group.key, group.brand)}
+                            disabled={savingBrandKey === group.key}
+                            className="self-end flex h-9 items-center justify-center gap-1.5 rounded-lg bg-violet-600 px-3 text-xs font-bold text-white transition-colors hover:bg-violet-500 disabled:opacity-50"
+                          >
+                            {savingBrandKey === group.key
+                              ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              : <Check className="h-3.5 w-3.5" />}
+                            Guardar marca
+                          </button>
+                        </div>
                         <div className="space-y-2 border-t border-zinc-800/80 p-2">
                 {group.products.map((product) => (
                   <div
@@ -550,6 +676,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ adminUser, onLogout, onC
                   </div>
                 ))}
                         </div>
+                        </>
                       )}
                     </section>
                   );

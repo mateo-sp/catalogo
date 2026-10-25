@@ -232,9 +232,9 @@ export const catalogService = {
                   precio,
                   descripcion: '',
                   imagenUrl:
-                    getBrandImage(marca) ||
                     data.imagenUrl ||
                     data.imageUrl ||
+                    getBrandImage(marca) ||
                     '',
                   visible: true,
                   disponible,

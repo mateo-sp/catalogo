@@ -199,8 +199,14 @@ export const AdminProductForm: React.FC<AdminProductFormProps> = ({
             min={0}
             step={500}
             placeholder="26000"
+            disabled={product?.inventorySource}
             className="w-full h-10 px-3 rounded-xl bg-zinc-900 border border-zinc-800 focus:border-violet-500 focus:ring-1 focus:ring-violet-500/50 text-white text-xs outline-none transition-all font-mono placeholder:text-zinc-600"
           />
+          {product?.inventorySource && (
+            <p className="text-[10px] text-zinc-500">
+              El precio se configura para toda la marca desde la lista de productos.
+            </p>
+          )}
         </div>
       </div>
 
