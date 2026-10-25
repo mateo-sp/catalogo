@@ -7,6 +7,7 @@ import {
   CATALOG_COLLECTION,
   catalogService,
   DEFAULT_WHATSAPP_MESSAGE_TEMPLATE,
+  resolveWhatsAppMessageTemplate,
   SAMPLE_CATALOG_PRODUCTS,
 } from '../services/catalogService';
 import { CatalogProduct } from '../types/CatalogProduct';
@@ -108,8 +109,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ adminUser, onLogout, onC
         if (configDoc.exists()) {
           setStoreName(configDoc.data().storeName || 'supposhop');
           setWhatsAppMessageTemplate(
-            configDoc.data().whatsAppMessageTemplate ||
-            DEFAULT_WHATSAPP_MESSAGE_TEMPLATE
+            resolveWhatsAppMessageTemplate(
+              configDoc.data().whatsAppMessageTemplate
+            )
           );
         } else {
           setStoreName('supposhop');
@@ -245,10 +247,15 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ adminUser, onLogout, onC
   const handleSaveSettings = async () => {
     if (
       !whatsAppMessageTemplate.includes('{marca}') ||
+      !whatsAppMessageTemplate.includes('{producto}') ||
       !whatsAppMessageTemplate.includes('{sabor}') ||
-      !whatsAppMessageTemplate.includes('{precio}')
+      !whatsAppMessageTemplate.includes('{precio}') ||
+      !whatsAppMessageTemplate.includes('{disponibilidad}')
     ) {
-      showToast('El mensaje debe conservar los campos {marca}, {sabor} y {precio}.', false);
+      showToast(
+        'El mensaje debe conservar los campos {marca}, {producto}, {sabor}, {precio} y {disponibilidad}.',
+        false
+      );
       return;
     }
 

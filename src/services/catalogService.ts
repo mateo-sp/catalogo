@@ -10,7 +10,7 @@ import voopooImage from '../assets/images/brand_voopoo_1792848922908.jpg';
 
 export const CATALOG_COLLECTION = 'catalogo_publico';
 
-export const DEFAULT_WHATSAPP_MESSAGE_TEMPLATE = `Hola {tienda}, quiero consultar por este producto:
+export const DEFAULT_WHATSAPP_MESSAGE_TEMPLATE = `Hola, quiero consultar por este producto:
 
 • Marca: {marca}
 • Producto: {producto}
@@ -19,6 +19,26 @@ export const DEFAULT_WHATSAPP_MESSAGE_TEMPLATE = `Hola {tienda}, quiero consulta
 • Disponibilidad: {disponibilidad}
 
 ¿Me confirman si hay stock y cómo coordinar la entrega?`;
+
+const LEGACY_DEFAULT_WHATSAPP_MESSAGE_TEMPLATE = `Hola {tienda}, quiero consultar por este producto:
+
+• Marca: {marca}
+• Producto: {producto}
+• Sabor: {sabor}
+• Precio: {precio}
+• Disponibilidad: {disponibilidad}
+
+¿Me confirman si hay stock y cómo coordinar la entrega?`;
+
+export function resolveWhatsAppMessageTemplate(template?: string): string {
+  if (
+    !template ||
+    template.trim() === LEGACY_DEFAULT_WHATSAPP_MESSAGE_TEMPLATE
+  ) {
+    return DEFAULT_WHATSAPP_MESSAGE_TEMPLATE;
+  }
+  return template;
+}
 
 export interface WhatsAppMessageValues {
   tienda: string;

@@ -9,6 +9,7 @@ import { db } from './firebase';
 import {
   catalogService,
   DEFAULT_WHATSAPP_MESSAGE_TEMPLATE,
+  resolveWhatsAppMessageTemplate,
 } from './services/catalogService';
 import { CatalogProduct, SortOption } from './types/CatalogProduct';
 import { Header } from './components/Header';
@@ -85,7 +86,7 @@ export default function App() {
       const config = snapshot.data();
       setStoreName(config.storeName || 'supposhop');
       setWhatsAppMessageTemplate(
-        config.whatsAppMessageTemplate || DEFAULT_WHATSAPP_MESSAGE_TEMPLATE
+        resolveWhatsAppMessageTemplate(config.whatsAppMessageTemplate)
       );
     },
     (error) => {
